@@ -1,0 +1,17 @@
+{
+  "name": "amr-fleet-bridge",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Zenoh/ROS2 to WebSocket bridge for the AMR Fleet Console dashboard",
+  "scripts": {
+    "start": "node bridge.mjs",
+    "demo": "DEMO=1 node bridge.mjs"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  },
+  "optionalDependencies": {
+    "@eclipse-zenoh/zenoh-ts": "^1.2.1"
+  }
+}
