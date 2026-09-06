@@ -17,7 +17,7 @@ interface Props {
   overlays: Overlays;
   chokepointBlocked: boolean;
   stale: boolean;
-  emptyMessage?: string;
+  emptyMessage?: string | undefined;
 }
 
 function css(name: string) {
