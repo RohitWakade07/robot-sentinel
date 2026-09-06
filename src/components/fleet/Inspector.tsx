@@ -45,9 +45,38 @@ export function Inspector({ robot, mode, estopped, onCommand }: Props) {
       <Row label="heading" value={`${heading.toFixed(1)}°`} />
       <Row label="velocity" value={`${robot.vel[0].toFixed(2)}, ${robot.vel[1].toFixed(2)} m/s`} />
       <Row label="speed" value={`${speed.toFixed(2)} m/s`} />
-      <Row label="battery" value={`${(robot.battery * 100).toFixed(0)} %`} />
+      <Row label="battery" value={`${robot.battery.toFixed(0)} % ${robot.charging ? '(Charging)' : ''} ${robot.low_battery ? '⚠️' : ''}`} />
       <Row label="task" value={robot.taskId ?? "—"} />
-      <Row label="waypoints" value={String(robot.path.length)} />
+      
+      {robot.eta !== undefined && <Row label="eta" value={`${robot.eta.toFixed(1)} s`} />}
+      {robot.path.length > 0 && <Row label="waypoints" value={String(robot.path.length)} />}
+      
+      {robot.communication && (
+        <>
+          <div className="mt-4 mb-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">Network</div>
+          <Row label="latency" value={`${robot.communication.latency_ms} ms`} />
+          <Row label="connectivity" value={`${robot.communication.connectivity}%`} />
+        </>
+      )}
+
+      {robot.health && (
+        <>
+          <div className="mt-4 mb-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">System Health</div>
+          <Row label="cpu" value={`${robot.health.cpu_usage}%`} />
+          <Row label="ros2" value={robot.health.ros2} />
+          <Row label="lidar" value={robot.health.lidar} />
+        </>
+      )}
+
+      {robot.safety && (
+        <>
+          <div className="mt-4 mb-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">Safety</div>
+          <Row label="collision risk" value={robot.safety.collision_risk} />
+          {robot.safety.proximity_warning && <Row label="warning" value="Proximity Alert ⚠️" />}
+        </>
+      )}
+
+      <div className="mt-4 mb-2 text-xs font-bold uppercase tracking-wider text-muted-foreground">Update Status</div>
       <Row
         label="last update"
         value={`${((Date.now() - robot.lastUpdate) / 1000).toFixed(1)} s ago`}

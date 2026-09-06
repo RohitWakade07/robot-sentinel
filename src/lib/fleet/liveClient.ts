@@ -5,23 +5,28 @@ import type {
   EventKind,
   FleetCommand,
   RobotState,
+  SystemState,
+  FleetSummary,
+  EnvironmentState,
 } from "./types";
 
 export interface LiveHandlers {
   onStatus: (s: ConnectionStatus, detail?: string) => void;
   onRobots: (robots: Record<string, RobotState>) => void;
+  onSystem: (system: SystemState) => void;
   onEvent: (kind: EventKind, message: string, robotId?: string) => void;
 }
 
-const TOPIC = "eyrc/holo_battalion/telemetry";
+const TOPIC_PREFIX = "eyrc/holo_battalion/fleet";
 
 /**
  * MQTT client for the HiveMQ bridge.
- * Keeps last-known poses on disconnect and auto-reconnects.
+ * Subscribes to telemetry topics and routes them to React state.
  */
 export class LiveFleetClient {
   private client: MqttClient | null = null;
   private robots: Record<string, RobotState> = {};
+  private system: SystemState = { summary: null, environment: null };
   private closed = false;
 
   constructor(
@@ -45,51 +50,29 @@ export class LiveFleetClient {
     this.client.on("connect", () => {
       this.handlers.onStatus("connected", this.url);
       this.handlers.onEvent("connection", `Connected to MQTT bridge ${this.url}`);
-      this.client?.subscribe(TOPIC, (err) => {
+      
+      const subTopic = `${TOPIC_PREFIX}/#`;
+      this.client?.subscribe(subTopic, (err) => {
         if (err) {
-          this.handlers.onEvent("system", `Failed to subscribe to ${TOPIC}`);
+          this.handlers.onEvent("system", `Failed to subscribe to ${subTopic}`);
         } else {
-          this.handlers.onEvent("system", `Subscribed to ${TOPIC}`);
+          this.handlers.onEvent("system", `Subscribed to ${subTopic}`);
         }
       });
     });
 
     this.client.on("message", (topic, payload) => {
-      if (topic !== TOPIC) return;
-      let msg: BridgeMessage;
+      if (!topic.startsWith(TOPIC_PREFIX)) return;
+      
+      const subtopic = topic.replace(`${TOPIC_PREFIX}/`, "");
+      let msg: any;
       try {
         msg = JSON.parse(payload.toString());
       } catch {
         return;
       }
       
-      if (msg.type === "robot_state") {
-        const prev = this.robots[msg.id];
-        const trail = prev ? [...prev.trail, msg.pos].slice(-60) : [msg.pos];
-        this.robots = {
-          ...this.robots,
-          [msg.id]: {
-            id: msg.id,
-            pos: msg.pos,
-            theta: msg.theta ?? 0,
-            vel: msg.vel ?? [0, 0],
-            battery: msg.battery ?? 0,
-            status: msg.status ?? "idle",
-            taskId: msg.task_id ?? null,
-            path: msg.path ?? [],
-            trail,
-            lastUpdate: msg.stamp ? msg.stamp * 1000 : Date.now(),
-          },
-        };
-        this.handlers.onRobots(this.robots);
-      } else if (msg.type === "event") {
-        this.handlers.onEvent(msg.kind ?? "system", msg.message, msg.robot_id);
-      } else if (msg.type === "hello") {
-        this.handlers.onEvent(
-          "connection",
-          `Bridge ready — router ${msg.router}, namespace ${msg.namespace}`,
-        );
-      }
+      this.handleMessage(subtopic, msg);
     });
 
     this.client.on("error", (err) => {
@@ -103,9 +86,91 @@ export class LiveFleetClient {
     });
   }
 
+  private handleMessage(subtopic: string, msg: any) {
+    if (subtopic === "connection" && msg.type === "hello") {
+      this.handlers.onEvent("connection", `Bridge ready — router ${msg.router}, namespace ${msg.namespace}`);
+      return;
+    }
+
+    if (subtopic === "summary") {
+      this.system.summary = msg as FleetSummary;
+      this.handlers.onSystem({ ...this.system });
+      return;
+    }
+
+    if (subtopic === "environment") {
+      this.system.environment = msg as EnvironmentState;
+      this.handlers.onSystem({ ...this.system });
+      return;
+    }
+
+    if (subtopic === "alerts") {
+      this.handlers.onEvent("alert", msg.message, msg.id);
+      return;
+    }
+
+    // Per-robot topics
+    const id = msg.id;
+    if (!id) return;
+
+    const prev = this.robots[id] || {
+      id,
+      pos: [0, 0],
+      theta: 0,
+      vel: [0, 0],
+      battery: 0,
+      status: "idle",
+      taskId: null,
+      path: [],
+      trail: [],
+      lastUpdate: 0,
+    };
+
+    const next = { ...prev };
+
+    switch (subtopic) {
+      case "robot_state":
+        next.pos = [msg.x, msg.y];
+        next.theta = msg.heading;
+        next.vel = msg.velocity;
+        next.status = msg.status;
+        next.trail = [...prev.trail, next.pos].slice(-60);
+        break;
+      case "trajectory":
+        next.path = msg.path;
+        next.destination = msg.destination;
+        next.eta = msg.eta;
+        break;
+      case "task_state":
+        next.taskId = msg.task_id;
+        break;
+      case "battery":
+        next.battery = msg.percentage;
+        next.charging = msg.charging;
+        next.low_battery = msg.low_battery;
+        break;
+      case "communication":
+        next.communication = msg;
+        break;
+      case "controller_state":
+        next.controller_mode = msg.mode;
+        break;
+      case "safety_state":
+        next.safety = msg;
+        break;
+      case "system_health":
+        next.health = msg;
+        break;
+    }
+
+    next.lastUpdate = msg.stamp ? msg.stamp * 1000 : Date.now();
+    this.robots = { ...this.robots, [id]: next };
+    this.handlers.onRobots(this.robots);
+  }
+
   send(cmd: FleetCommand) {
     if (this.client && this.client.connected) {
-      this.client.publish("eyrc/holo_battalion/commands", JSON.stringify(cmd));
+      this.client.publish(`${TOPIC_PREFIX}/commands`, JSON.stringify(cmd));
       return true;
     }
     return false;

@@ -6,6 +6,28 @@ export type RobotStatus =
   | "blocked"
   | "offline";
 
+export interface SystemHealth {
+  lidar: string;
+  imu: string;
+  stm32: string;
+  ros2: string;
+  cpu_usage: number;
+  comms: string;
+}
+
+export interface CommunicationState {
+  p2p_connected: boolean;
+  latency_ms: number;
+  message_age_ms: number;
+  connectivity: number;
+}
+
+export interface SafetyState {
+  collision_risk: "low" | "medium" | "high";
+  proximity_warning: boolean;
+  estop: boolean;
+}
+
 /**
  * Mode-agnostic robot state. Produced either by the in-browser simulation loop
  * or by the Zenoh->WebSocket bridge. The UI never knows which.
@@ -15,15 +37,47 @@ export interface RobotState {
   pos: [number, number];
   theta: number;
   vel: [number, number];
-  battery: number; // 0..1
+  battery: number; // 0..100
+  charging?: boolean;
+  low_battery?: boolean;
   status: RobotStatus;
   taskId: string | null;
   /** Remaining planned path in world coordinates. */
   path: [number, number][];
+  destination?: [number, number];
+  eta?: number;
   /** Recent positions, newest last. */
   trail: [number, number][];
+  
+  // Extended state
+  communication?: CommunicationState;
+  health?: SystemHealth;
+  safety?: SafetyState;
+  controller_mode?: string;
+
   /** ms epoch of the last state update (used for staleness in live mode). */
   lastUpdate: number;
+}
+
+export interface FleetSummary {
+  total: number;
+  moving: number;
+  idle: number;
+  waiting: number;
+  charging: number;
+  active_tasks: number;
+  alerts: number;
+}
+
+export interface EnvironmentState {
+  obstacles: [number, number][];
+  blocked_aisles: [number, number][];
+  restricted_areas: [number, number][];
+}
+
+export interface SystemState {
+  summary: FleetSummary | null;
+  environment: EnvironmentState | null;
 }
 
 export type EventKind =
@@ -33,7 +87,8 @@ export type EventKind =
   | "connection"
   | "stale"
   | "command"
-  | "system";
+  | "system"
+  | "alert";
 
 export interface FleetEvent {
   id: number;
@@ -53,40 +108,6 @@ export interface FleetCommand {
   robot_id?: string;
   value?: boolean;
 }
-
-/** Wire message emitted by the bridge for each robot update. */
-export interface RobotStateMessage {
-  type: "robot_state";
-  id: string;
-  pos: [number, number];
-  theta: number;
-  vel: [number, number];
-  battery: number;
-  status: RobotStatus;
-  task_id: string | null;
-  path?: [number, number][];
-  stamp?: number;
-}
-
-export interface BridgeEventMessage {
-  type: "event";
-  kind: EventKind;
-  robot_id?: string;
-  message: string;
-  stamp?: number;
-}
-
-export interface BridgeHelloMessage {
-  type: "hello";
-  router: string;
-  namespace: string;
-  robots: string[];
-}
-
-export type BridgeMessage =
-  | RobotStateMessage
-  | BridgeEventMessage
-  | BridgeHelloMessage;
 
 export interface Overlays {
   paths: boolean;

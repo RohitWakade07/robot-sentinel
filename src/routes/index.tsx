@@ -53,6 +53,7 @@ function FleetConsole() {
         connection={fleet.connection}
         config={fleet.config}
         robotCount={fleet.robots.length}
+        systemState={fleet.systemState}
       />
 
       <div className="flex min-h-0 flex-1">

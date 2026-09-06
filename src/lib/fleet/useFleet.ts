@@ -31,6 +31,7 @@ export function useFleet() {
   const [config, setConfig] = useState<LiveConfig>(DEFAULT_CONFIG);
   const [liveEnabled, setLiveEnabled] = useState(false);
   const [estopped, setEstopped] = useState<Record<string, boolean>>({});
+  const [systemState, setSystemState] = useState<SystemState | null>(null);
 
   const simRef = useRef<FleetSimulation | null>(null);
   const clientRef = useRef<LiveFleetClient | null>(null);
@@ -82,6 +83,7 @@ export function useFleet() {
     const client = new LiveFleetClient(config.wsUrl, {
       onStatus: (s) => setConnection(s),
       onRobots: (map) => setRobots(Object.values(map)),
+      onSystem: (system) => setSystemState(system),
       onEvent: (kind, message, robotId) => log(kind, message, robotId),
     });
     clientRef.current = client;
@@ -153,5 +155,6 @@ export function useFleet() {
     setLiveEnabled,
     sendCommand,
     estopped,
+    systemState,
   };
 }

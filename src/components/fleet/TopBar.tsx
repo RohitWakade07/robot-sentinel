@@ -7,6 +7,7 @@ interface Props {
   connection: ConnectionStatus;
   config: LiveConfig;
   robotCount: number;
+  systemState: import("@/lib/fleet/types").SystemState | null;
 }
 
 const DOT: Record<ConnectionStatus, string> = {
@@ -15,7 +16,7 @@ const DOT: Record<ConnectionStatus, string> = {
   offline: "bg-danger",
 };
 
-export function TopBar({ mode, onMode, connection, config, robotCount }: Props) {
+export function TopBar({ mode, onMode, connection, config, robotCount, systemState }: Props) {
   return (
     <header className="flex items-center gap-4 border-b border-border bg-panel px-4 py-2.5">
       <div className="flex items-center gap-2">
@@ -51,6 +52,19 @@ export function TopBar({ mode, onMode, connection, config, robotCount }: Props) 
       )}
 
       <div className="ml-auto flex items-center gap-4 font-mono text-[11px] text-muted-foreground">
+        {mode === "live" && systemState?.summary && (
+          <>
+            <span className="text-primary/80">
+              Moving: <span className="text-foreground">{systemState.summary.moving}</span>
+            </span>
+            <span className="text-yield/80">
+              Idle: <span className="text-foreground">{systemState.summary.idle}</span>
+            </span>
+            <span className="text-danger/80">
+              Alerts: <span className="text-foreground">{systemState.summary.alerts}</span>
+            </span>
+          </>
+        )}
         <span>
           robots <span className="text-foreground">{robotCount}</span>
         </span>
