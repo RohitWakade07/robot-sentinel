@@ -28,7 +28,7 @@ export function LiveConfigPanel({ config, setConfig, enabled, setEnabled, connec
           value={draft.wsUrl}
           onChange={(e) => setDraft({ ...draft, wsUrl: e.target.value })}
           className="mt-1 h-8 font-mono text-xs"
-          placeholder="ws://broker.hivemq.com:8000/mqtt"
+          placeholder="wss://broker.hivemq.com:8884/mqtt"
         />
       </label>
       <label className="block">

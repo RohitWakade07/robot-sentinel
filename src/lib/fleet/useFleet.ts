@@ -11,7 +11,7 @@ import type {
 } from "./types";
 
 const DEFAULT_CONFIG: LiveConfig = {
-  wsUrl: "ws://broker.hivemq.com:8000/mqtt",
+  wsUrl: "wss://broker.hivemq.com:8884/mqtt",
   zenohRouter: "broker.hivemq.com:1883",
   namespace: "eyrc/holo_battalion/telemetry",
 };
