@@ -17,7 +17,7 @@ interface SimRobot extends RobotState {
 const MAX_SPEED = 1.5; // m/s
 const YIELD_RADIUS = 2.4;
 const YIELD_MAX = 1.6; // s — never freeze longer than this
-const DOCK_POS: [number, number] = [DOCK.x + DOCK.w + 0.9, DOCK.y + DOCK.h / 2];
+const DOCK_POS: [number, number] = [DOCK?.x ?? 0, DOCK?.y ?? 0];
 
 let taskCounter = 40;
 
@@ -84,11 +84,17 @@ export class FleetSimulation {
       r.taskId = null;
       this.emit("task", `${r.id} low battery — returning to dock`, r.id);
     } else {
-      const station = PICK_STATIONS[Math.floor(Math.random() * PICK_STATIONS.length)];
-      r.goal = [station.x, station.y];
-      r.goalLabel = station.id;
-      r.taskId = nextTaskId();
-      this.emit("task", `${r.taskId} assigned to ${r.id} → pick station ${station.id}`, r.id);
+      if (PICK_STATIONS && PICK_STATIONS.length > 0) {
+        const station = PICK_STATIONS[Math.floor(Math.random() * PICK_STATIONS.length)];
+        r.goal = [station.x, station.y];
+        r.goalLabel = station.id;
+        r.taskId = nextTaskId();
+        this.emit("task", `${r.taskId} assigned to ${r.id} → pick station ${station.id}`, r.id);
+      } else {
+        r.goal = [Math.random() * 24, Math.random() * 24];
+        r.goalLabel = "wander";
+        r.taskId = nextTaskId();
+      }
     }
     this.replan(r);
     r.status = "moving";

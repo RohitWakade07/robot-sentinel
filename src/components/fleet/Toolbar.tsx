@@ -42,7 +42,7 @@ export function Toolbar(p: Props) {
             <span className="hud-label">speed</span>
             {[0.5, 1, 2, 4].map((s) => (
               <button
-                key={s}
+                key={`speed-${s}`}
                 onClick={() => p.setSpeed(s)}
                 className={`rounded border px-2 py-0.5 font-mono text-[11px] ${
                   p.speed === s
@@ -58,7 +58,7 @@ export function Toolbar(p: Props) {
             <span className="hud-label">fleet</span>
             {[2, 3, 4, 5, 6, 7, 8].map((n) => (
               <button
-                key={n}
+                key={`fleet-${n}`}
                 onClick={() => p.setFleetSize(n)}
                 className={`rounded border px-2 py-0.5 font-mono text-[11px] ${
                   p.fleetSize === n

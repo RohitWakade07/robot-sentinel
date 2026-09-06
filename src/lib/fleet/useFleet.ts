@@ -11,9 +11,9 @@ import type {
 } from "./types";
 
 const DEFAULT_CONFIG: LiveConfig = {
-  wsUrl: "ws://localhost:8787",
-  zenohRouter: "tcp/127.0.0.1:7447",
-  namespace: "robot_",
+  wsUrl: "ws://broker.hivemq.com:8000/mqtt",
+  zenohRouter: "broker.hivemq.com:1883",
+  namespace: "eyrc/holo_battalion/telemetry",
 };
 
 let eventId = 0;
