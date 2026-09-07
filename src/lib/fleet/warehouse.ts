@@ -13,7 +13,15 @@ export interface Rect {
 export const CORRIDOR_Y: number[] = [];
 export const AISLE_X: number[] = [];
 
-export const SHELVES: Rect[] = [];
+export const SHELVES: Rect[] = [
+  { x: 1.62, y: 5.14, w: 2.57, h: 6.29, label: "P1" },
+  { x: 20.19, y: 5.14, w: 2.57, h: 6.29, label: "P2" },
+  { x: 1.62, y: 13.14, w: 2.57, h: 6.29, label: "P3" },
+  { x: 20.19, y: 13.14, w: 2.57, h: 6.29, label: "P4" },
+  { x: 9.72, y: 10.19, w: 4.95, h: 4.00, label: "D1" },
+  { x: 6.19, y: 18.57, w: 4.00, h: 2.96, label: "D2" },
+  { x: 14.19, y: 18.57, w: 4.00, h: 2.96, label: "D3" },
+];
 
 export const DOCK: Rect = { x: -100, y: -100, w: 0, h: 0, label: "CHARGE DOCK" };
 

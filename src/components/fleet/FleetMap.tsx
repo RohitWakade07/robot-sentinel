@@ -110,6 +110,23 @@ export function FleetMap({
       }
       ctx.globalAlpha = 1;
 
+      // shelves
+      for (const s of SHELVES) {
+        ctx.fillStyle = colors.shelf;
+        ctx.fillRect(X(s.x), Y(s.y), s.w * scale, s.h * scale);
+        ctx.strokeStyle = colors.border;
+        ctx.lineWidth = 1;
+        ctx.strokeRect(X(s.x), Y(s.y), s.w * scale, s.h * scale);
+        
+        if (s.label && scale > 10) {
+          ctx.fillStyle = colors.fg;
+          ctx.font = "12px ui-monospace, monospace";
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillText(s.label, X(s.x + s.w / 2), Y(s.y + s.h / 2));
+        }
+      }
+
       const now = Date.now();
 
       for (const r of robots) {
