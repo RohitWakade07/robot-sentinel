@@ -8,6 +8,7 @@ import sys
 import rclpy
 from rclpy.node import Node
 from hb_interfaces.msg import Poses2D
+from std_msgs.msg import String
 
 import paho.mqtt.client as mqtt
 
@@ -47,6 +48,14 @@ class EYRCBridge(Node):
             10
         )
         self.get_logger().info('EYRC Bridge subscribed to /bot_pose')
+
+        self.path_sub = self.create_subscription(
+            String,
+            '/bot_paths',
+            self.bot_paths_cb,
+            10
+        )
+        self.bot_paths = {}
 
         # Publish rich telemetry at 2Hz
         self.telemetry_timer = self.create_timer(0.5, self.publish_telemetry)
@@ -93,6 +102,17 @@ class EYRCBridge(Node):
             }
             self.mqtt_client.publish(f"{BASE_TOPIC}/robot_state", json.dumps(payload))
 
+    def bot_paths_cb(self, msg: String):
+        try:
+            paths = json.loads(msg.data)
+            for bot_id, path in paths.items():
+                if bot_id in ROBOTS:
+                    # Scale path from mm to decimeters for the dashboard ( / 100.0)
+                    scaled_path = [[pt[0] / 100.0, pt[1] / 100.0] for pt in path]
+                    self.bot_paths[bot_id] = scaled_path
+        except Exception as e:
+            self.get_logger().error(f"Failed to parse paths: {e}")
+
     def publish_telemetry(self):
         stamp = time.time()
         moving_count = sum(1 for s in self.robot_states.values() if s["status"] == "moving")
@@ -125,9 +145,10 @@ class EYRCBridge(Node):
             state["latency"] = max(2, min(50, state["latency"] + random.randint(-2, 2)))
 
             # Trajectory
+            bot_path = self.bot_paths.get(bot_id, [])
             traj = {
                 "id": bot_id,
-                "path": [], "waypoint": [state["x"] + 1, state["y"] + 1],
+                "path": bot_path, "waypoint": [state["x"] + 1, state["y"] + 1],
                 "destination": [12.0, 12.0], "eta": 15.5, "stamp": stamp
             }
             self.mqtt_client.publish(f"{BASE_TOPIC}/trajectory", json.dumps(traj))

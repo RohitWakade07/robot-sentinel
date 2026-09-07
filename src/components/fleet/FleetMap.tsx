@@ -61,6 +61,14 @@ export function FleetMap({
       fg: css("--foreground"),
     };
 
+    const BOT_PATH_COLORS: Record<string, string> = {
+      "R0": "#ef4444", // red
+      "R2": "#22c55e", // green
+      "R4": "#3b82f6", // blue
+      "R1": "#a855f7", // purple
+      "R3": "#f97316", // orange
+    };
+
     const resize = () => {
       const dpr = window.devicePixelRatio || 1;
       const r = box.getBoundingClientRect();
@@ -128,6 +136,87 @@ export function FleetMap({
       }
 
       const now = Date.now();
+      if (overlays.comms) {
+        ctx.strokeStyle = colors.cyan;
+        ctx.fillStyle = colors.cyan;
+        
+        for (let i = 0; i < robots.length; i++) {
+          const r1 = robots[i];
+          if (stale || now - r1.lastUpdate > STALE_MS) continue;
+
+          // Range circle
+          ctx.globalAlpha = 0.04;
+          ctx.beginPath();
+          ctx.arc(X(r1.pos[0]), Y(r1.pos[1]), 8 * scale, 0, Math.PI * 2);
+          ctx.fill();
+
+          for (let j = i + 1; j < robots.length; j++) {
+            const r2 = robots[j];
+            if (stale || now - r2.lastUpdate > STALE_MS) continue;
+
+            const dx = r2.pos[0] - r1.pos[0];
+            const dy = r2.pos[1] - r1.pos[1];
+            const dist = Math.hypot(dx, dy);
+
+            if (dist < 12) { // 12 units P2P range
+              // Draw pulsing line
+              ctx.globalAlpha = 0.2 + Math.sin(now / 200) * 0.1;
+              ctx.lineWidth = 1.5;
+              ctx.setLineDash([4, 4]);
+              ctx.beginPath();
+              ctx.moveTo(X(r1.pos[0]), Y(r1.pos[1]));
+              ctx.lineTo(X(r2.pos[0]), Y(r2.pos[1]));
+              ctx.stroke();
+              ctx.setLineDash([]);
+
+              // Animate data packet (r1 to r2)
+              const offset1 = (now % 1500) / 1500;
+              const px1 = r1.pos[0] + dx * offset1;
+              const py1 = r1.pos[1] + dy * offset1;
+              ctx.globalAlpha = 0.9;
+              ctx.beginPath();
+              ctx.arc(X(px1), Y(py1), 2.5, 0, Math.PI * 2);
+              ctx.fill();
+
+              // Animate data packet (r2 to r1)
+              const offset2 = ((now + 750) % 1500) / 1500;
+              const px2 = r2.pos[0] - dx * offset2;
+              const py2 = r2.pos[1] - dy * offset2;
+              ctx.beginPath();
+              ctx.arc(X(px2), Y(py2), 2.5, 0, Math.PI * 2);
+              ctx.fill();
+
+              // Floating message text
+              ctx.globalAlpha = 0.85;
+              ctx.textAlign = "center";
+              ctx.textBaseline = "middle";
+              
+              if (scale > 10) {
+                 const midX = r1.pos[0] + dx / 2;
+                 const midY = r1.pos[1] + dy / 2;
+                 ctx.font = "9px ui-monospace, monospace";
+                 
+                 // Fake msg content alternating based on time
+                 const showVel = Math.floor(now / 2000) % 2 === 0;
+                 const msg = showVel 
+                     ? `[V: ${r1.vel[0].toFixed(1)},${r1.vel[1].toFixed(1)}]` 
+                     : `[P: ${r1.pos[0].toFixed(1)},${r1.pos[1].toFixed(1)}]`;
+                 
+                 // Draw a subtle background for text readability
+                 const textWidth = ctx.measureText(msg).width;
+                 ctx.fillStyle = colors.floor;
+                 ctx.globalAlpha = 0.6;
+                 ctx.fillRect(X(midX) - textWidth/2 - 2, Y(midY) - 15, textWidth + 4, 10);
+                 
+                 ctx.fillStyle = colors.cyan;
+                 ctx.globalAlpha = 0.9;
+                 ctx.fillText(msg, X(midX), Y(midY) - 10);
+              }
+            }
+          }
+        }
+        ctx.globalAlpha = 1;
+      }
 
       for (const r of robots) {
         const isStale = stale || now - r.lastUpdate > STALE_MS;
@@ -146,8 +235,8 @@ export function FleetMap({
         }
 
         if (overlays.paths && r.path.length) {
-          ctx.strokeStyle = colors.cyan;
-          ctx.globalAlpha = selected ? 0.9 : 0.35;
+          ctx.strokeStyle = BOT_PATH_COLORS[r.id] || colors.cyan;
+          ctx.globalAlpha = selected ? 0.9 : 0.45;
           ctx.setLineDash([4, 4]);
           ctx.lineWidth = 1.5;
           ctx.beginPath();
@@ -155,15 +244,6 @@ export function FleetMap({
           for (const p of r.path) ctx.lineTo(X(p[0]), Y(p[1]));
           ctx.stroke();
           ctx.setLineDash([]);
-          ctx.globalAlpha = isStale ? 0.45 : 1;
-        }
-
-        if (overlays.comms) {
-          ctx.strokeStyle = colors.cyan;
-          ctx.globalAlpha = 0.12;
-          ctx.beginPath();
-          ctx.arc(X(r.pos[0]), Y(r.pos[1]), 6 * scale, 0, Math.PI * 2);
-          ctx.stroke();
           ctx.globalAlpha = isStale ? 0.45 : 1;
         }
 
@@ -212,7 +292,33 @@ export function FleetMap({
         if (overlays.ids) {
           ctx.fillStyle = colors.fg;
           ctx.font = "11px ui-monospace, monospace";
+          ctx.textAlign = "left";
+          ctx.textBaseline = "alphabetic";
           ctx.fillText(r.id, X(r.pos[0]) + rad + 4, Y(r.pos[1]) - rad);
+
+          // Creative decentralized intent text
+          const now = Date.now();
+      if (overlays.comms) {
+              ctx.fillStyle = colors.cyan;
+              ctx.font = "10px ui-monospace, monospace";
+              
+              let intent = "Idle";
+              if (r.status === "moving") {
+                  if (r.pos[1] > 16) {
+                      intent = r.pos[0] > 12 ? "» Approaching D3" : "» Approaching D2";
+                  } else if (r.pos[1] > 9 && r.pos[1] <= 16 && r.pos[0] > 8 && r.pos[0] < 16) {
+                      intent = "» Approaching D1";
+                  } else if (r.pos[1] <= 9 && (r.pos[0] < 5 || r.pos[0] > 19)) {
+                      intent = "» Targeting Pickup";
+                  } else {
+                      intent = "» Negotiating Path";
+                  }
+              } else if (r.status === "yielding") {
+                  intent = "» Yielding P2P";
+              }
+              
+              ctx.fillText(intent, X(r.pos[0]) + rad + 4, Y(r.pos[1]) - rad + 12);
+          }
         }
         ctx.globalAlpha = 1;
       }

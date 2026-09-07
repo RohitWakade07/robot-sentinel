@@ -21,6 +21,9 @@ export const SHELVES: Rect[] = [
   { x: 9.72, y: 10.19, w: 4.95, h: 4.00, label: "D1" },
   { x: 6.19, y: 18.57, w: 4.00, h: 2.96, label: "D2" },
   { x: 14.19, y: 18.57, w: 4.00, h: 2.96, label: "D3" },
+  { x: 12.19 - 1.5, y: 2.19 - 1.5, w: 3.00, h: 3.00, label: "CHG 0" },
+  { x: 15.69 - 1.5, y: 2.19 - 1.5, w: 3.00, h: 3.00, label: "CHG 2" },
+  { x: 8.69 - 1.5, y: 2.19 - 1.5, w: 3.00, h: 3.00, label: "CHG 4" },
 ];
 
 export const DOCK: Rect = { x: -100, y: -100, w: 0, h: 0, label: "CHARGE DOCK" };

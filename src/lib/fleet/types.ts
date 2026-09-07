@@ -85,6 +85,7 @@ export type EventKind =
   | "dock"
   | "blocked"
   | "connection"
+  | "comms"
   | "stale"
   | "command"
   | "system"
@@ -94,8 +95,9 @@ export interface FleetEvent {
   id: number;
   t: number;
   kind: EventKind;
-  robotId?: string;
   message: string;
+  robotId?: string;
+  payload?: any;
 }
 
 export type ConnectionStatus = "connected" | "reconnecting" | "offline";

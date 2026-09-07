@@ -131,6 +131,56 @@ export function useFleet() {
     [robots, selectedId],
   );
 
+  // ---- simulated P2P communications log ------------------------------------
+  useEffect(() => {
+    if (!running) return;
+
+    const interval = setInterval(() => {
+      // Find a random pair of robots that are close to each other
+      const botList = runRef.current.mode === "sim" ? simRef.current?.snapshot() ?? [] : robots;
+      
+      for (let i = 0; i < botList.length; i++) {
+        for (let j = i + 1; j < botList.length; j++) {
+          const r1 = botList[i];
+          const r2 = botList[j];
+          
+          const dx = r2.pos[0] - r1.pos[0];
+          const dy = r2.pos[1] - r1.pos[1];
+          const dist = Math.hypot(dx, dy);
+
+          // If within P2P range and some random chance
+          if (dist < 12 && Math.random() < 0.3) {
+            const msgsR1 = [
+              { msg: `Picking the crate ${Math.floor(Math.random()*20 + 20)} in P1 zone`, payload: { action: "pick", zone: "P1", crate_id: Math.floor(Math.random()*20 + 20), status: "in_progress" } },
+              { msg: `Approaching D1 zone to place the crate`, payload: { action: "drop", zone: "D1", target_pose: [9.72, 10.19], eta_sec: 4.5 } },
+              { msg: `Coordinated with Bot ${r2.id.replace('R','')} to take the zone`, payload: { type: "negotiation", peer: r2.id, resolution: "yield_right_of_way", priority: "high" } },
+              { msg: `Sent payload dimensions to ${r2.id}`, payload: { size: [1.2, 0.8, 1.0], weight_kg: 4.5, sender: r1.id } },
+            ];
+            
+            const msgsR2 = [
+              { msg: `Received trajectory update from ${r1.id}`, payload: { sender: r1.id, trajectory_points: 12, conflict: false } },
+              { msg: `Coordinated with Bot ${r1.id.replace('R','')} to take the crates`, payload: { type: "task_allocation", peer: r1.id, strategy: "distance_based_split" } },
+              { msg: `Acknowledged yield request from ${r1.id}`, payload: { sender: r1.id, action: "hold_position", duration_sec: 3.2 } },
+            ];
+            
+            // Log for R1
+            const r1Event = msgsR1[Math.floor(Math.random() * msgsR1.length)];
+            log("comms", r1Event.msg, r1.id, r1Event.payload);
+            
+            // Log for R2
+            const r2Event = msgsR2[Math.floor(Math.random() * msgsR2.length)];
+            log("comms", r2Event.msg, r2.id, r2Event.payload);
+            
+            // Only do one pair per interval to avoid spam
+            return;
+          }
+        }
+      }
+    }, 4000);
+
+    return () => clearInterval(interval);
+  }, [running, robots, log]);
+
   return {
     mode,
     switchMode,
